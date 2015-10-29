@@ -8,6 +8,7 @@ import Queue
 import re
 import urllib2
 from bs4 import BeautifulSoup
+import requests
 
 domain = sys.argv[1]
 exploredPages = []
@@ -29,27 +30,31 @@ while not toExplore.empty():
 	exploredPages.append(page)
 	 
 	try: 
-		pageHTML = urllib2.urlopen(page)
+		pageHTML = requests.get(page, auth=('user', 'pass'))
 	except:
 		break
 	else:
-		soup = BeautifulSoup(pageHTML.read()) 	
+		soup = BeautifulSoup(pageHTML.text) 	
 
-		# add all unexplored links to the queue
+		for tag in soup.find_all("span"):
+			url = domain + tag.get_text()
+			if (str(url) not in exploredPages):
+		    		toExplore.put(str(url))
+
 		for link in soup.find_all('a'):
 			url = link.get('href')
 
-			# if it's a local url, just append it to the domain
-			if (re.match('http', str(url)) == None) and (re.match('www', str(url)) == None):
-				url = domain + str(url)
-
 			if domainPattern.match(str(url)) != None: 
-				if (link.get('href') not in exploredPages):
+				# if it's a local url, just append it to the domain
+				if (re.match('http', str(url)) == None) and (re.match('www', str(url)) == None):
+					url = domain + str(url)
+				if (str(link.get('href')) not in exploredPages):
 		    			toExplore.put(url)
 
 		#search the soup for emails and print them
 		for match in emailPattern.findall(str(soup)):
 			print match[0] + '@' + match[1] + '.' + match[2]
+
 
 
 
